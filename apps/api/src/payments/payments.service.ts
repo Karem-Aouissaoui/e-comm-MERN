@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -123,5 +124,82 @@ export class PaymentsService {
       paymentIntentId: intent.id,
       clientSecret: intent.client_secret!,
     };
+  }
+  /**
+   * Handle Stripe webhook events.
+   * IMPORTANT:
+   * - We must verify the signature using the raw body and STRIPE_WEBHOOK_SECRET.
+   * - We never trust client-side "payment succeeded" claims.
+   */
+  async handleStripeWebhook(params: { rawBody: Buffer; signature: string }) {
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      throw new Error('Missing STRIPE_WEBHOOK_SECRET in environment.');
+    }
+
+    let event: Stripe.Event;
+
+    try {
+      // Verify signature and construct the event
+      event = this.stripe.webhooks.constructEvent(
+        params.rawBody,
+        params.signature,
+        webhookSecret,
+      );
+    } catch (err: any) {
+      // Stripe recommends returning 400 on signature verification failure
+      throw new BadRequestException('Webhook signature verification failed.');
+    }
+
+    /**
+     * Stripe confirms success/failure via these events.
+     */
+    switch (event.type) {
+      case 'payment_intent.succeeded': {
+        const intent = event.data.object as Stripe.PaymentIntent;
+
+        // We stored stripePaymentIntentId on the order; use it to find the order
+        const order = await this.orderModel.findOne({
+          stripePaymentIntentId: intent.id,
+        });
+        if (!order)
+          throw new NotFoundException('Order not found for PaymentIntent.');
+
+        // Idempotency: if already paid, do nothing
+        if (order.paymentStatus !== 'paid') {
+          order.paymentStatus = 'paid';
+          order.paidAt = new Date();
+
+          await order.save();
+        }
+
+        break;
+      }
+
+      case 'payment_intent.payment_failed': {
+        const intent = event.data.object as Stripe.PaymentIntent;
+
+        const order = await this.orderModel.findOne({
+          stripePaymentIntentId: intent.id,
+        });
+        if (!order)
+          throw new NotFoundException('Order not found for PaymentIntent.');
+
+        // If it wasn’t paid yet, mark failed
+        if (order.paymentStatus !== 'paid') {
+          order.paymentStatus = 'failed';
+          await order.save();
+        }
+
+        break;
+      }
+
+      default:
+        // For MVP: ignore unhandled events
+        break;
+    }
+
+    // Stripe expects a 2xx response when webhook is received successfully
+    return { received: true };
   }
 }

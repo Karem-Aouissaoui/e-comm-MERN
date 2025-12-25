@@ -8,7 +8,7 @@ async function bootstrap() {
    * Create the NestJS application instance.
    * At this point, NO middleware or configuration is active yet.
    */
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   /**
    * cookie-parser middleware
