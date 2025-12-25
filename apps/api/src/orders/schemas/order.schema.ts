@@ -13,25 +13,30 @@ export type OrderDocument = HydratedDocument<Order>;
 export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'cancelled';
 
 /**
- * OrderItem is embedded inside an Order.
- * We snapshot title/unitPrice so the order remains correct even if product changes later.
+ * OrderStatusEvent records each status change with a timestamp.
+ * This creates a clear timeline for buyer/supplier/admin.
  */
-export class OrderItem {
-  @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
-  productId!: Types.ObjectId;
+@Schema({ _id: false })
+export class OrderStatusEvent {
+  @Prop({
+    type: String,
+    required: true,
+    enum: ['pending', 'confirmed', 'shipped', 'cancelled'],
+  })
+  status!: 'pending' | 'confirmed' | 'shipped' | 'cancelled';
 
-  @Prop({ required: true, trim: true, maxlength: 120 })
-  title!: string;
+  @Prop({ type: Date, required: true })
+  at!: Date;
 
   /**
-   * Unit price in cents (snapshot from product at order time)
+   * Optional note (useful for cancellation reasons or internal remarks)
    */
-  @Prop({ required: true, min: 0 })
-  unitPriceCents!: number;
-
-  @Prop({ required: true, min: 1 })
-  quantity!: number;
+  @Prop({ type: String, trim: true, maxlength: 500, required: false })
+  note?: string;
 }
+
+export const OrderStatusEventSchema =
+  SchemaFactory.createForClass(OrderStatusEvent);
 
 @Schema({ timestamps: true })
 export class Order {
@@ -67,10 +72,11 @@ export class Order {
   notes!: string;
 
   /**
-   * Optional expected delivery date (your UI shows delivery date).
+   * Optional expected delivery date.
+   * We set type: Date because NestJS cannot infer union types (Date | null).
    */
-  @Prop({ default: null })
-  expectedDeliveryDate?: Date | null;
+  @Prop({ type: Date, required: false })
+  expectedDeliveryDate?: Date;
 
   /**
    * Order total in cents
@@ -81,9 +87,62 @@ export class Order {
   @Prop({ required: true, uppercase: true, maxlength: 3, default: 'EUR' })
   currency!: string;
 
+  /**
+   * Payment status of the order.
+   * This is controlled ONLY by the backend (never by frontend).
+   */
+  @Prop({
+    type: String,
+    required: true,
+    enum: ['unpaid', 'requires_action', 'paid', 'failed', 'refunded'],
+    default: 'unpaid',
+  })
+  paymentStatus!: 'unpaid' | 'requires_action' | 'paid' | 'failed' | 'refunded';
+
+  /**
+   * Stripe PaymentIntent ID.
+   * Stored so webhooks can match Stripe events to our order.
+   */
+  @Prop({ type: String, required: false })
+  stripePaymentIntentId?: string;
+
+  /**
+   * When payment was completed successfully.
+   */
+  @Prop({ type: Date, required: false })
+  paidAt?: Date;
+
   // Added automatically by timestamps: true
   createdAt!: Date;
   updatedAt!: Date;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);
+
+/**
+ * OrderItem is embedded inside an Order.
+ * We snapshot title/unitPrice so the order remains correct even if product changes later.
+ */
+export class OrderItem {
+  @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
+  productId!: Types.ObjectId;
+
+  @Prop({ required: true, trim: true, maxlength: 120 })
+  title!: string;
+
+  /**
+   * Unit price in cents (snapshot from product at order time)
+   */
+  @Prop({ required: true, min: 0 })
+  unitPriceCents!: number;
+
+  @Prop({ required: true, min: 1 })
+  quantity!: number;
+
+  /**
+   * Status history timeline.
+   * We store it explicitly so we can display “what happened when”.
+   */
+  @Prop({ type: [OrderStatusEventSchema], required: true, default: [] })
+  statusHistory!: OrderStatusEvent[];
+}

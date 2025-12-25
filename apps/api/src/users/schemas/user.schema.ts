@@ -47,7 +47,6 @@ export class User {
     lowercase: true,
     trim: true,
     maxlength: 120,
-    index: true,
   })
   email!: string;
 
@@ -73,6 +72,3 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
-
-// Helpful indexes
-UserSchema.index({ email: 1 }, { unique: true });

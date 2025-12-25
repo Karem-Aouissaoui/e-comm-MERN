@@ -96,4 +96,17 @@ export class OrdersController {
       dto,
     });
   }
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/thread')
+  async getOrderThread(@Req() req: Request, @Param('id') id: string) {
+    const user = (req as any).user as { userId: string; roles: string[] };
+
+    const thread = await this.orders.getOrCreateOrderThread({
+      orderId: id,
+      requesterId: user.userId,
+      requesterRoles: user.roles,
+    });
+
+    return { threadId: thread._id.toString() };
+  }
 }
