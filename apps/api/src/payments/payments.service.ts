@@ -158,18 +158,34 @@ export class PaymentsService {
       case 'payment_intent.succeeded': {
         const intent = event.data.object as Stripe.PaymentIntent;
 
-        // We stored stripePaymentIntentId on the order; use it to find the order
-        const order = await this.orderModel.findOne({
+        /**
+         * Primary mapping: we store stripePaymentIntentId on the order
+         */
+        let order = await this.orderModel.findOne({
           stripePaymentIntentId: intent.id,
         });
-        if (!order)
-          throw new NotFoundException('Order not found for PaymentIntent.');
 
-        // Idempotency: if already paid, do nothing
+        /**
+         * Fallback mapping: if metadata.orderId exists, use it.
+         * This makes debugging and recovery easier.
+         */
+        if (!order && intent.metadata?.orderId) {
+          order = await this.orderModel.findById(intent.metadata.orderId);
+        }
+
+        // If we still can't find the order, we acknowledge the webhook and move on.
+        if (!order) return { received: true };
+
+        // Idempotency: do nothing if already paid
         if (order.paymentStatus !== 'paid') {
           order.paymentStatus = 'paid';
           order.paidAt = new Date();
 
+          /**
+           * Policy A:
+           * Do NOT auto-confirm the business order status.
+           * Supplier must still confirm availability/fulfillment.
+           */
           await order.save();
         }
 
@@ -179,13 +195,17 @@ export class PaymentsService {
       case 'payment_intent.payment_failed': {
         const intent = event.data.object as Stripe.PaymentIntent;
 
-        const order = await this.orderModel.findOne({
+        let order = await this.orderModel.findOne({
           stripePaymentIntentId: intent.id,
         });
-        if (!order)
-          throw new NotFoundException('Order not found for PaymentIntent.');
 
-        // If it wasn’t paid yet, mark failed
+        if (!order && intent.metadata?.orderId) {
+          order = await this.orderModel.findById(intent.metadata.orderId);
+        }
+
+        if (!order) return { received: true };
+
+        // Only mark failed if it was not already paid
         if (order.paymentStatus !== 'paid') {
           order.paymentStatus = 'failed';
           await order.save();
