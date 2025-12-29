@@ -125,6 +125,33 @@ export class PaymentsService {
       clientSecret: intent.client_secret!,
     };
   }
+
+  /**
+   * Buyer can check payment status for their own order.
+   * Useful for frontend polling while waiting for webhook updates.
+   */
+  async getPaymentStatus(
+    requester: { userId: string; roles: string[] },
+    orderId: string,
+  ) {
+    const order = await this.orderModel.findById(orderId);
+    if (!order) throw new NotFoundException('Order not found.');
+
+    // Buyer-only for MVP (easy rule)
+    if (!requester.roles.includes('buyer')) {
+      throw new ForbiddenException('Only buyers can view payment status.');
+    }
+
+    if (order.buyerId.toString() !== requester.userId) {
+      throw new ForbiddenException('You do not own this order.');
+    }
+
+    return {
+      orderId: order._id.toString(),
+      paymentStatus: order.paymentStatus,
+      paidAt: order.paidAt ?? null,
+    };
+  }
   /**
    * Handle Stripe webhook events.
    * IMPORTANT:

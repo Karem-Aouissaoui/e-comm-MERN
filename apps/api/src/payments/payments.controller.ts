@@ -7,6 +7,8 @@ import {
   Post,
   Req,
   UseGuards,
+  Param,
+  Get,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import type { RawBodyRequest } from '@nestjs/common';
@@ -29,6 +31,13 @@ export class PaymentsController {
   createIntent(@Req() req: Request, @Body() dto: CreateIntentDto) {
     const user = (req as any).user as { userId: string; roles: string[] };
     return this.payments.createPaymentIntent(user, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('status/:orderId')
+  getPaymentStatus(@Req() req: Request, @Param('orderId') orderId: string) {
+    const user = (req as any).user as { userId: string; roles: string[] };
+    return this.payments.getPaymentStatus(user, orderId);
   }
 
   @Post('webhook')
