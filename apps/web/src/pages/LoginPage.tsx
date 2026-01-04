@@ -30,6 +30,17 @@ export function LoginPage() {
     }
   }
 
+  async function checkMe() {
+    try {
+      const res = await api.get("/auth/me");
+      setResult("Session OK:\n" + JSON.stringify(res.data, null, 2));
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ?? err?.message ?? "Session check failed";
+      setResult(`Session check failed: ${msg}`);
+    }
+  }
+
   return (
     <div
       style={{ maxWidth: 420, margin: "40px auto", fontFamily: "system-ui" }}
@@ -60,6 +71,10 @@ export function LoginPage() {
 
         <button disabled={loading} style={{ padding: 10 }}>
           {loading ? "Logging in..." : "Login"}
+        </button>
+
+        <button type="button" onClick={checkMe} style={{ padding: 10 }}>
+          Check /auth/me
         </button>
 
         {result && (
