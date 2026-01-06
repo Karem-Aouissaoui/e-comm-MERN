@@ -158,6 +158,21 @@ export class OrdersService {
     await order.save();
     return order;
   }
+
+  /**
+   * Supplier inbox (Policy A):
+   * Only orders that are paid and still pending confirmation.
+   */
+  async listSupplierInbox(supplierId: string) {
+    return this.orderModel
+      .find({
+        supplierId: new Types.ObjectId(supplierId),
+        status: 'pending',
+        paymentStatus: 'paid',
+      })
+      .sort({ createdAt: -1 });
+  }
+
   /**
    * Get or create the messaging thread linked to an order.
    * We enforce access using getOrderById first.

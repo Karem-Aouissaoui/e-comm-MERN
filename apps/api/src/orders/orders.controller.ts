@@ -48,6 +48,17 @@ export class OrdersController {
     const user = (req as any).user as { userId: string; roles: string[] };
     return this.orders.listBuyerOrders(user.userId);
   }
+  /**
+   * GET /orders/supplier/inbox
+   * Supplier-only: paid orders waiting for confirmation (Policy A).
+   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('supplier')
+  @Get('supplier/inbox')
+  listSupplierInbox(@Req() req: Request) {
+    const user = (req as any).user as { userId: string; roles: string[] };
+    return this.orders.listSupplierInbox(user.userId);
+  }
 
   /**
    * GET /orders/supplier
@@ -96,6 +107,7 @@ export class OrdersController {
       dto,
     });
   }
+
   @UseGuards(JwtAuthGuard)
   @Get(':id/thread')
   async getOrderThread(@Req() req: Request, @Param('id') id: string) {
