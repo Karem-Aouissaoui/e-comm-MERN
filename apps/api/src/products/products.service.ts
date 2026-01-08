@@ -10,6 +10,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { ListProductsDto } from './dto/list-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Product, ProductDocument } from './schemas/product.schema';
+import { MessagingService } from 'src/messaging/messaging.service';
 
 /**
  * ProductsService contains all product business logic.
@@ -20,7 +21,48 @@ export class ProductsService {
   constructor(
     @InjectModel(Product.name)
     private readonly productModel: Model<ProductDocument>,
+    private readonly messagingService: MessagingService,
   ) {}
+
+  /**
+   * Buyer-only: get or create a "product question" thread.
+   *
+   * Why ProductsService?
+   * - We must verify the product exists
+   * - We must determine the supplier from the product.supplierId
+   * - We enforce business rules (buyer can ask, supplier owns product, etc.)
+   */
+  async getOrCreateProductThread(params: {
+    productId: string;
+    requesterId: string;
+    requesterRoles: string[];
+  }) {
+    const { productId, requesterId, requesterRoles } = params;
+
+    // 1) Load the product
+    const product = await this.productModel.findById(productId);
+    if (!product) throw new NotFoundException('Product not found.');
+
+    // 2) Business rule: only buyers can start pre-purchase questions
+    if (!requesterRoles.includes('buyer')) {
+      throw new ForbiddenException('Only buyers can ask suppliers questions.');
+    }
+
+    // 3) Safety: product must have a supplierId
+    if (!product.supplierId) {
+      throw new NotFoundException('Product has no supplier assigned.');
+    }
+
+    // 4) Create or reuse the thread in Messaging
+    const thread = await this.messagingService.getOrCreateProductThread({
+      productId: product._id, // Types.ObjectId
+      buyerId: new Types.ObjectId(requesterId),
+      supplierId: product.supplierId, // Types.ObjectId
+    });
+
+    // Controller can return { threadId: ... }
+    return thread;
+  }
 
   /**
    * Create product owned by the logged-in supplier.

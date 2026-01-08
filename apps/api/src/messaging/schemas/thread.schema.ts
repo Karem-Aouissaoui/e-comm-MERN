@@ -57,6 +57,6 @@ export const ThreadSchema = SchemaFactory.createForClass(Thread);
  * This keeps inbox clean.
  */
 ThreadSchema.index(
-  { buyerId: 1, supplierId: 1, productId: 1, orderId: 1 },
-  { unique: true, partialFilterExpression: { buyerId: { $type: 'objectId' } } },
+  { productId: 1, buyerId: 1 },
+  { unique: true, partialFilterExpression: { productId: { $exists: true } } },
 );

@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 import { Product, ProductSchema } from './schemas/product.schema';
+import { MessagingModule } from 'src/messaging/messaging.module';
 
 /**
  * ProductsModule wires together:
@@ -18,6 +19,7 @@ import { Product, ProductSchema } from './schemas/product.schema';
      * Without this, @InjectModel(Product.name) will fail with "ProductModel" missing.
      */
     MongooseModule.forFeature([{ name: Product.name, schema: ProductSchema }]),
+    MessagingModule,
   ],
   controllers: [ProductsController],
   providers: [ProductsService],

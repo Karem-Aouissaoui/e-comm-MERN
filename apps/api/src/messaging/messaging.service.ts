@@ -28,6 +28,34 @@ export class MessagingService {
   ) {}
 
   /**
+   * Technical logic only:
+   * - Find existing thread for (productId + buyerId)
+   * - Create if missing
+   *
+   * No role checks here (business rules belong to ProductsService).
+   */
+  async getOrCreateProductThread(params: {
+    productId: Types.ObjectId;
+    buyerId: Types.ObjectId;
+    supplierId: Types.ObjectId;
+  }) {
+    const { productId, buyerId, supplierId } = params;
+
+    // 1) Try to find existing product thread for this buyer
+    const existing = await this.threadModel.findOne({ productId, buyerId });
+    if (existing) return existing;
+
+    // 2) Create new thread
+    return this.threadModel.create({
+      productId,
+      buyerId,
+      supplierId,
+      // Optional: initialize lastMessageAt etc. if your schema uses it
+      // lastMessageAt: new Date(),
+    });
+  }
+
+  /**
    * Create (or return existing) thread between buyer and supplier.
    *
    * We use buyerId from JWT (req.user.userId) and supplierId from DTO.

@@ -28,6 +28,22 @@ export class ProductsController {
   constructor(private readonly products: ProductsService) {}
 
   /**
+   * GET /products/:id/thread
+   * Buyer-only: pre-purchase questions to supplier
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/thread')
+  getOrCreateProductThread(@Req() req: Request, @Param('id') id: string) {
+    const user = (req as any).user as { userId: string; roles: string[] };
+
+    return this.products.getOrCreateProductThread({
+      productId: id,
+      requesterId: user.userId,
+      requesterRoles: user.roles,
+    });
+  }
+
+  /**
    * GET /products
    * Public browsing endpoint for buyers (and anyone).
    */
