@@ -33,14 +33,16 @@ export class ProductsController {
    */
   @UseGuards(JwtAuthGuard)
   @Get(':id/thread')
-  getOrCreateProductThread(@Req() req: Request, @Param('id') id: string) {
+  async getOrCreateProductThread(@Req() req: Request, @Param('id') id: string) {
     const user = (req as any).user as { userId: string; roles: string[] };
 
-    return this.products.getOrCreateProductThread({
+    const thread = await this.products.getOrCreateProductThread({
       productId: id,
       requesterId: user.userId,
       requesterRoles: user.roles,
     });
+    // Always return a small, stable response shape for frontend
+    return { threadId: thread._id.toString() };
   }
 
   /**
