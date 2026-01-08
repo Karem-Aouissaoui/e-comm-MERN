@@ -73,6 +73,30 @@ export function LoginPage() {
           {loading ? "Logging in..." : "Login"}
         </button>
 
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => {
+              setEmail("buyer1@test.com");
+              setPassword("StrongPass123!");
+            }}
+            style={{ padding: 10 }}
+          >
+            Use Buyer
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setEmail("supplier1@test.com");
+              setPassword("StrongPass123!");
+            }}
+            style={{ padding: 10 }}
+          >
+            Use Supplier
+          </button>
+        </div>
+
         <button type="button" onClick={checkMe} style={{ padding: 10 }}>
           Check /auth/me
         </button>

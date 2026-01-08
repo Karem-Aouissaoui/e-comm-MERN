@@ -42,6 +42,32 @@ export function ProductDetailPage() {
     if (id) load();
   }, [id]);
 
+  /**
+   * Opens (or creates) a pre-purchase product thread with the supplier,
+   * then navigates to the thread page.
+   */
+  async function askSupplier() {
+    // Guard: product must be loaded before we can use its _id
+    if (!product) return;
+
+    try {
+      const res = await api.get(`/products/${product._id}/thread`);
+      const threadId = res.data?.threadId;
+
+      if (!threadId) {
+        throw new Error("Server did not return threadId");
+      }
+
+      navigate(`/threads/${threadId}`);
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ??
+          err?.message ??
+          "Failed to open product thread"
+      );
+    }
+  }
+
   const totalPreview = useMemo(() => {
     if (!product) return "";
     return formatMoney(product.priceCents * qty, product.currency);
@@ -129,6 +155,11 @@ export function ProductDetailPage() {
           <div style={{ fontWeight: 800 }}>{totalPreview}</div>
         </div>
       </div>
+      {product && (
+        <button onClick={askSupplier} style={{ padding: 10, fontWeight: 700 }}>
+          Ask supplier
+        </button>
+      )}
 
       <button
         onClick={createOrder}
