@@ -46,7 +46,9 @@ export class PaymentsController {
     @Req() req: RawBodyRequest<Request>,
     @Headers('stripe-signature') signature: string,
   ) {
+    console.log('[WEBHOOK] HIT /payments/webhook');
     if (!req.rawBody) {
+      console.log('[WEBHOOK] Missing rawBody');
       throw new BadRequestException(
         'Missing raw body for webhook verification.',
       );

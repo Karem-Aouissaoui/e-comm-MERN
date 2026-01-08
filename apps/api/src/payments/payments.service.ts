@@ -68,14 +68,33 @@ export class PaymentsService {
     }
 
     /**
-     * 1) Reuse existing PaymentIntent if possible
+     * Idempotency:
+     * If this order already has a PaymentIntent, reuse it.
+     * This prevents multiple intents for the same order when users refresh.
      */
     if (order.stripePaymentIntentId) {
       const existing = await this.stripe.paymentIntents.retrieve(
         order.stripePaymentIntentId,
       );
 
-      if (existing && existing.client_secret) {
+      // If Stripe still has a usable client_secret, return it
+      if (existing?.client_secret && existing.status !== 'canceled') {
+        console.log(
+          '[INTENT][REUSE]',
+          'order',
+          order._id.toString(),
+          'pi',
+          existing.id,
+          'status',
+          existing.status,
+        );
+        if (existing.status === 'succeeded') {
+          // Webhook may have been missed locally, so sync DB to reality.
+          order.paymentStatus = 'paid';
+          order.paidAt = order.paidAt ?? new Date();
+          await order.save();
+        }
+
         return {
           orderId: order._id.toString(),
           paymentIntentId: existing.id,
@@ -84,45 +103,36 @@ export class PaymentsService {
       }
     }
 
-    /**
-     * 2) Create a new PaymentIntent
-     * At this point, intent WILL be created or the function throws.
-     */
-    let intent: Stripe.PaymentIntent;
+    // Otherwise create a new one
+    const intent = await this.stripe.paymentIntents.create({
+      amount: order.totalCents,
+      currency: order.currency.toLowerCase(),
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        orderId: order._id.toString(),
+        buyerId: order.buyerId.toString(),
+        supplierId: order.supplierId.toString(),
+      },
+    });
 
-    try {
-      intent = await this.stripe.paymentIntents.create({
-        amount: order.totalCents,
-        currency: order.currency.toLowerCase(),
-        automatic_payment_methods: { enabled: true },
-        metadata: {
-          orderId: order._id.toString(),
-          buyerId: order.buyerId.toString(),
-          supplierId: order.supplierId.toString(),
-        },
-      });
-    } catch (err: any) {
-      console.error(
-        'Stripe PaymentIntent creation failed:',
-        err?.type ?? err?.message,
-      );
-      throw new ForbiddenException('Payment provider configuration error.');
-    }
+    console.log(
+      '[INTENT][NEW]',
+      'order',
+      order._id.toString(),
+      'pi',
+      intent.id,
+      'meta.orderId',
+      intent.metadata?.orderId,
+    );
 
-    /**
-     * 3) Persist Stripe info
-     */
     order.stripePaymentIntentId = intent.id;
     order.paymentStatus = 'requires_action';
     await order.save();
 
-    /**
-     * 4) Return frontend-safe response
-     */
     return {
       orderId: order._id.toString(),
       paymentIntentId: intent.id,
-      clientSecret: intent.client_secret!,
+      clientSecret: intent.client_secret,
     };
   }
 
@@ -184,7 +194,12 @@ export class PaymentsService {
     switch (event.type) {
       case 'payment_intent.succeeded': {
         const intent = event.data.object as Stripe.PaymentIntent;
-
+        console.log(
+          '[WEBHOOK] succeeded intent:',
+          intent.id,
+          'meta.orderId:',
+          intent.metadata?.orderId,
+        );
         /**
          * Primary mapping: we store stripePaymentIntentId on the order
          */
@@ -199,7 +214,10 @@ export class PaymentsService {
         if (!order && intent.metadata?.orderId) {
           order = await this.orderModel.findById(intent.metadata.orderId);
         }
-
+        console.log(
+          '[WEBHOOK] matched order:',
+          order?._id?.toString() ?? 'NONE',
+        );
         // If we still can't find the order, we acknowledge the webhook and move on.
         if (!order) return { received: true };
 
