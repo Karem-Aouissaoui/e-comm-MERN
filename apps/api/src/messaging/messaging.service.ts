@@ -10,6 +10,7 @@ import { CreateThreadDto } from './dto/create-thread.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { Message, MessageDocument } from './schemas/message.schema';
 import { Thread, ThreadDocument } from './schemas/thread.schema';
+import { Order, OrderDocument } from '../orders/schemas/order.schema';
 
 /**
  * MessagingService handles thread + message operations.
@@ -25,6 +26,8 @@ export class MessagingService {
     private readonly threadModel: Model<ThreadDocument>,
     @InjectModel(Message.name)
     private readonly messageModel: Model<MessageDocument>,
+    // ✅ used only when thread.orderId exists
+    @InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>,
   ) {}
 
   /**
@@ -152,6 +155,19 @@ export class MessagingService {
       userId: params.userId,
       roles: params.roles,
     });
+
+    // If this thread is tied to an order, enforce paid-only order chat.
+    if (thread.orderId) {
+      const order = await this.orderModel.findById(thread.orderId);
+      if (!order)
+        throw new NotFoundException('Order not found for this thread.');
+
+      if (order.paymentStatus !== 'paid') {
+        throw new ForbiddenException(
+          'Order chat is available after payment is completed. Use product questions before purchase.',
+        );
+      }
+    }
 
     const created = await this.messageModel.create({
       threadId: new Types.ObjectId(params.threadId),

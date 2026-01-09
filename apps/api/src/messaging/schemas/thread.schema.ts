@@ -28,10 +28,10 @@ export class Thread {
    *
    * This matches common marketplace behavior.
    */
-  @Prop({ type: Types.ObjectId, ref: 'Product', default: null, index: true })
+  @Prop({ type: Types.ObjectId, ref: 'Product', required: false, index: true })
   productId?: Types.ObjectId | null;
 
-  @Prop({ type: Types.ObjectId, ref: 'Order', default: null, index: true })
+  @Prop({ type: Types.ObjectId, ref: 'Order', required: false, index: true })
   orderId?: Types.ObjectId | null;
 
   /**

@@ -187,6 +187,16 @@ export class OrdersService {
       requesterId: params.requesterId,
       requesterRoles: params.requesterRoles,
     });
+    /**
+     * Policy A:
+     * Order chat is allowed only after payment is confirmed.
+     * Pre-purchase questions must go through product threads.
+     */
+    if (order.paymentStatus !== 'paid') {
+      throw new ForbiddenException(
+        'Order chat is available after payment is completed. Use product questions before purchase.',
+      );
+    }
 
     // Thread is anchored on buyer, because createOrGetThread expects buyerId.
     const thread = await this.messagingService.createOrGetThread(
