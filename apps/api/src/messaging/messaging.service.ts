@@ -128,17 +128,40 @@ export class MessagingService {
   /**
    * List messages in a thread (only participants/admin).
    */
+
   async listMessages(params: {
     threadId: string;
     userId: string;
     roles: string[];
   }) {
-    // Ensure access
-    await this.getThread(params);
+    /**
+     * 1) Access control: requester must be part of the thread.
+     * Reuse the returned thread for further checks.
+     */
+    const thread = await this.getThread(params);
 
+    /**
+     * 2) Policy: if this is an ORDER thread, only allow viewing after payment is confirmed.
+     */
+    if (thread.orderId) {
+      const order = await this.orderModel.findById(thread.orderId);
+      if (!order) {
+        throw new NotFoundException('Order not found for this thread.');
+      }
+
+      if (order.paymentStatus !== 'paid') {
+        throw new ForbiddenException(
+          'Order chat is available after payment is completed.',
+        );
+      }
+    }
+
+    /**
+     * 3) Return messages in chronological order (chat style)
+     */
     return this.messageModel
       .find({ threadId: new Types.ObjectId(params.threadId) })
-      .sort({ createdAt: 1 }); // oldest first (chat style)
+      .sort({ createdAt: 1 });
   }
 
   /**
@@ -150,13 +173,19 @@ export class MessagingService {
     roles: string[];
     dto: SendMessageDto;
   }) {
+    /**
+     * 1) Access control: requester must be buyer/supplier (or admin) of this thread.
+     * getThread() should throw if not allowed.
+     */
     const thread = await this.getThread({
       threadId: params.threadId,
       userId: params.userId,
       roles: params.roles,
     });
-
-    // If this thread is tied to an order, enforce paid-only order chat.
+    /**
+     * 2) Policy: if this is an ORDER thread, only allow chat after payment is confirmed.
+     * Product threads remain available for pre-purchase questions.
+     */
     if (thread.orderId) {
       const order = await this.orderModel.findById(thread.orderId);
       if (!order)
@@ -169,10 +198,14 @@ export class MessagingService {
       }
     }
 
+    /**
+     * 3) Create the message
+     */
+    const body = params.dto.body.trim();
     const created = await this.messageModel.create({
       threadId: new Types.ObjectId(params.threadId),
       senderId: new Types.ObjectId(params.userId),
-      body: params.dto.body.trim(),
+      body,
     });
 
     /**
