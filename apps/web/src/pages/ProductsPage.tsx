@@ -75,6 +75,7 @@ export function ProductsPage() {
           </Link>
         ))}
       </div>
+      <div className="bg-black text-white p-4 rounded-xl">Tailwind OK</div>
     </div>
   );
 }

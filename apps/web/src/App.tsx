@@ -5,6 +5,7 @@ import { CheckoutPage } from "./pages/CheckoutPage";
 import { SupplierInboxPage } from "./pages/SupplierInboxPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ThreadPage } from "./pages/ThreadPage";
+import { OrdersPage } from "./pages/OrdersPage";
 
 /**
  * Minimal navigation bar for development.
@@ -43,17 +44,17 @@ export default function App() {
 
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
-
         <Route path="/login" element={<LoginPage />} />
-
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/checkout/:orderId" element={<CheckoutPage />} />
-
         {/* Supplier page: will work only if you are logged in as supplier */}
         <Route path="/supplier/inbox" element={<SupplierInboxPage />} />
         <Route path="/threads/:threadId" element={<ThreadPage />} />
-
+        <Route path="/orders" element={<OrdersPage />} />
+        {/*
+        <Route path="/orders/:id" element={<OrderDetailPage />} />
+       */}
         <Route path="*" element={<Navigate to="/products" replace />} />
       </Routes>
     </BrowserRouter>
