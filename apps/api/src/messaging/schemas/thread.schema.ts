@@ -58,5 +58,13 @@ export const ThreadSchema = SchemaFactory.createForClass(Thread);
  */
 ThreadSchema.index(
   { productId: 1, buyerId: 1 },
-  { unique: true, partialFilterExpression: { productId: { $exists: true } } },
+  { unique: true, partialFilterExpression: { productId: { $type: 'objectId' } } },
+);
+
+/**
+ * Also ensure one thread per order.
+ */
+ThreadSchema.index(
+  { orderId: 1 },
+  { unique: true, partialFilterExpression: { orderId: { $type: 'objectId' } } },
 );
