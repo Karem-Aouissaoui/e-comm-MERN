@@ -73,3 +73,5 @@ export const ProductSchema = SchemaFactory.createForClass(Product);
  * text index allows keyword searching in title/description.
  */
 ProductSchema.index({ title: 'text', description: 'text' });
+
+ProductSchema.index({ title: 'text', description: 'text' });
