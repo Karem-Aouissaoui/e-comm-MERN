@@ -74,4 +74,4 @@ export const ProductSchema = SchemaFactory.createForClass(Product);
  */
 ProductSchema.index({ title: 'text', description: 'text' });
 
-ProductSchema.index({ title: 'text', description: 'text' });
+
