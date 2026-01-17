@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
@@ -9,17 +9,13 @@ import {
 } from "@stripe/react-stripe-js";
 
 import { api } from "../lib/api";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Spinner } from "../components/ui/spinner";
+import { AlertCircle, CheckCircle2, Lock } from "lucide-react";
 
-/**
- * Load Stripe using publishable key (frontend-safe).
- */
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-/**
- * Checkout shell:
- * - Fetches clientSecret from backend
- * - Renders Stripe Elements once ready
- */
 export function CheckoutPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const [clientSecret, setClientSecret] = useState<string>("");
@@ -50,47 +46,62 @@ export function CheckoutPage() {
 
   const options = useMemo(() => ({ clientSecret }), [clientSecret]);
 
-  if (loading) return <div style={{ padding: 24 }}>Preparing checkout…</div>;
-  if (error) return <div style={{ padding: 24, color: "red" }}>{error}</div>;
-  if (!clientSecret)
-    return <div style={{ padding: 24 }}>Missing client secret.</div>;
+  if (loading) {
+     return (
+        <div className="flex h-screen items-center justify-center">
+           <Spinner size="lg" />
+        </div>
+     )
+  }
+
+  if (error) {
+     return (
+        <div className="flex h-screen items-center justify-center">
+           <div className="max-w-md text-center space-y-4">
+              <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+              <h2 className="text-xl font-bold">Checkout Failed</h2>
+              <p className="text-muted-foreground">{error}</p>
+              <Link to="/orders">
+                 <Button variant="outline">Back to Orders</Button>
+              </Link>
+           </div>
+        </div>
+     );
+  }
+  
+  if (!clientSecret) {
+     return <div className="p-8 text-center">Missing client secret.</div>;
+  }
 
   return (
-    <div
-      style={{
-        maxWidth: 520,
-        margin: "40px auto",
-        padding: 16,
-        fontFamily: "system-ui",
-      }}
-    >
-      <h1>Checkout</h1>
-
-      <Elements stripe={stripePromise} options={options}>
-        <CheckoutForm orderId={orderId!} />
-      </Elements>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-lg shadow-xl border-primary/10">
+        <CardHeader className="text-center space-y-2">
+           <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit">
+              <Lock className="h-6 w-6 text-primary" />
+           </div>
+          <CardTitle className="text-2xl">Secure Checkout</CardTitle>
+          <CardDescription>Order #{orderId?.slice(-6)}</CardDescription>
+        </CardHeader>
+        <CardContent>
+           <Elements stripe={stripePromise} options={options}>
+             <CheckoutForm orderId={orderId!} />
+           </Elements>
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-/**
- * Actual payment form:
- * - Uses Stripe PaymentElement
- * - Confirms payment
- * - Then polls backend payment status until it becomes "paid"
- */
 function CheckoutForm({ orderId }: { orderId: string }) {
   const stripe = useStripe();
   const elements = useElements();
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string>("");
+  const [success, setSuccess] = useState(false);
 
   async function pollUntilPaid() {
-    /**
-     * Poll /payments/status/:orderId until paid or failed.
-     * This avoids relying on Stripe redirect flows during MVP.
-     */
     const maxTries = 30; // ~30 * 1s = 30s
     for (let i = 0; i < maxTries; i++) {
       const res = await api.get(`/payments/status/${orderId}`);
@@ -107,6 +118,7 @@ function CheckoutForm({ orderId }: { orderId: string }) {
   async function onPay(e: React.FormEvent) {
     e.preventDefault();
     setMsg("");
+    setSuccess(false);
 
     if (!stripe || !elements) {
       setMsg("Stripe is still loading, try again in a second.");
@@ -115,14 +127,9 @@ function CheckoutForm({ orderId }: { orderId: string }) {
 
     setBusy(true);
     try {
-      /**
-       * Confirm payment using Stripe.js.
-       * We do NOT pass amounts here; Stripe already knows the amount from the PaymentIntent.
-       */
       const result = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          // No redirect for most card payments in test mode
           return_url: window.location.href,
         },
         redirect: "if_required",
@@ -136,30 +143,55 @@ function CheckoutForm({ orderId }: { orderId: string }) {
 
       setMsg("Payment submitted. Waiting for confirmation…");
 
-      // Now wait for the webhook to mark the order as paid
       const final = await pollUntilPaid();
-      if (final === "paid") setMsg("Payment confirmed. Order is paid.");
+      if (final === "paid") {
+         setSuccess(true);
+         setMsg("Payment confirmed! Redirecting...");
+         // Optional: Redirect after success
+         setTimeout(() => window.location.href = "/orders", 2000);
+      }
       else if (final === "failed") setMsg("Payment failed. Please try again.");
-      else setMsg("Payment pending. Refresh in a moment.");
+      else setMsg("Payment pending. Please check your orders page.");
     } catch (err: any) {
       setMsg(err?.message ?? "Unexpected error during payment.");
     } finally {
-      setBusy(false);
+      if (!success) setBusy(false);
     }
   }
 
+  if (success) {
+     return (
+        <div className="text-center space-y-4 py-6">
+           <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto animate-bounce" />
+           <h3 className="text-xl font-bold text-green-700">Payment Successful!</h3>
+           <p className="text-muted-foreground">Thank you for your purchase.</p>
+        </div>
+     )
+  }
+
   return (
-    <form onSubmit={onPay} style={{ display: "grid", gap: 12 }}>
-      <PaymentElement />
+    <form onSubmit={onPay} className="space-y-6">
+      <PaymentElement options={{ layout: 'tabs' }} />
 
-      <button
-        disabled={busy || !stripe || !elements}
-        style={{ padding: 12, fontWeight: 700 }}
+      {msg && (
+         <div className="rounded-md bg-yellow-50 p-3 text-sm text-yellow-800 border border-yellow-200">
+            {msg}
+         </div>
+      )}
+
+      <Button 
+         className="w-full" 
+         size="lg" 
+         disabled={busy || !stripe || !elements}
       >
-        {busy ? "Processing…" : "Pay now"}
-      </button>
-
-      {msg && <div style={{ whiteSpace: "pre-wrap" }}>{msg}</div>}
+        {busy ? <><Spinner className="mr-2 h-4 w-4 bg-white" /> Processing...</> : "Pay Now"}
+      </Button>
+      
+      <div className="flex justify-center">
+         <Link to="/orders" className="text-sm text-muted-foreground hover:underline">
+            Cancel and return to orders
+         </Link>
+      </div>
     </form>
   );
 }

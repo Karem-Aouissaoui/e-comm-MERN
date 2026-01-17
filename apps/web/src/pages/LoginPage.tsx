@@ -1,112 +1,128 @@
 import { useState } from "react";
 import { api } from "../lib/api";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 
-/**
- * Minimal login page for MVP.
- * It calls POST /auth/login and relies on HttpOnly cookie auth.
- */
 export function LoginPage() {
   const [email, setEmail] = useState("buyer1@test.com");
   const [password, setPassword] = useState("StrongPass123!");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<string>("");
+  const [error, setError] = useState<string>("");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setResult("");
+    setError("");
 
     try {
       await api.post("/auth/login", { email, password });
-      setResult("Login OK. Cookie should be set. Next: test /auth/me.");
+      // Force refresh or invalidate queries to update user state
+      window.location.href = "/products";
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ??
         err?.message ??
         "Login failed (unknown error)";
-      setResult(`Login failed: ${msg}`);
+      setError(msg);
     } finally {
       setLoading(false);
     }
   }
 
-  async function checkMe() {
-    try {
-      const res = await api.get("/auth/me");
-      setResult("Session OK:\n" + JSON.stringify(res.data, null, 2));
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ?? err?.message ?? "Session check failed";
-      setResult(`Session check failed: ${msg}`);
-    }
-  }
-
   return (
-    <div
-      style={{ maxWidth: 420, margin: "40px auto", fontFamily: "system-ui" }}
-    >
-      <h1>Login</h1>
+    <div className="flex min-h-[80vh] items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-lg border-primary-100">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">
+            Welcome back
+          </CardTitle>
+          <CardDescription className="text-center">
+            Enter your credentials to access your account
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label
+                htmlFor="email"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label
+                htmlFor="password"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Password
+              </label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                required
+              />
+            </div>
 
-      <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
-        <label>
-          Email
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ width: "100%", padding: 10, marginTop: 6 }}
-            autoComplete="email"
-          />
-        </label>
+            {error && (
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                {error}
+              </div>
+            )}
 
-        <label>
-          Password
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ width: "100%", padding: 10, marginTop: 6 }}
-            type="password"
-            autoComplete="current-password"
-          />
-        </label>
-
-        <button disabled={loading} style={{ padding: 10 }}>
-          {loading ? "Logging in..." : "Login"}
-        </button>
-
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            type="button"
-            onClick={() => {
-              setEmail("buyer1@test.com");
-              setPassword("StrongPass123!");
-            }}
-            style={{ padding: 10 }}
-          >
-            Use Buyer
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setEmail("supplier1@test.com");
-              setPassword("StrongPass123!");
-            }}
-            style={{ padding: 10 }}
-          >
-            Use Supplier
-          </button>
-        </div>
-
-        <button type="button" onClick={checkMe} style={{ padding: 10 }}>
-          Check /auth/me
-        </button>
-
-        {result && (
-          <div style={{ whiteSpace: "pre-wrap" }}>
-            <strong>Result:</strong> {result}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Signing in..." : "Sign in"}
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter className="flex flex-col gap-2 border-t bg-muted/50 px-6 py-4">
+          <p className="text-xs text-muted-foreground text-center mb-2">
+            Demo functionality:
+          </p>
+          <div className="grid grid-cols-2 gap-2 w-full">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setEmail("buyer1@test.com");
+                setPassword("StrongPass123!");
+              }}
+            >
+              Buyer Demo
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setEmail("supplier1@test.com");
+                setPassword("StrongPass123!");
+              }}
+            >
+              Supplier Demo
+            </Button>
           </div>
-        )}
-      </form>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

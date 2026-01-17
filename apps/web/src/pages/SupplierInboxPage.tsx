@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { formatMoney } from "../lib/money";
+import { Card } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { Spinner } from "../components/ui/spinner";
+import { Check, Inbox, PackageCheck } from "lucide-react";
+import { EmptyState } from "../components/ui/empty-state";
 
-/**
- * Minimal order shape for supplier inbox.
- * Add fields as you need them for UI (buyer info, items, etc.).
- */
 type SupplierInboxOrder = {
   _id: string;
   status: string;
@@ -26,7 +28,6 @@ export function SupplierInboxPage() {
     setError("");
 
     try {
-      // Supplier-only endpoint we just added
       const res = await api.get("/orders/supplier/inbox");
       setOrders(res.data ?? []);
     } catch (err: any) {
@@ -47,13 +48,7 @@ export function SupplierInboxPage() {
     setError("");
 
     try {
-      /**
-       * Confirm order (Policy A).
-       * Backend enforces: only paid orders can be confirmed.
-       */
       await api.patch(`/orders/${orderId}/status`, { status: "confirmed" });
-
-      // Reload list so confirmed orders disappear from inbox
       await load();
     } catch (err: any) {
       setError(
@@ -67,70 +62,73 @@ export function SupplierInboxPage() {
   }
 
   return (
-    <div
-      style={{
-        maxWidth: 900,
-        margin: "40px auto",
-        padding: 16,
-        fontFamily: "system-ui",
-      }}
-    >
-      <h1>Supplier Inbox</h1>
-      <p style={{ opacity: 0.8 }}>Paid orders waiting for your confirmation.</p>
+    <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
+      <div className="flex items-center gap-2">
+         <Inbox className="h-8 w-8 text-primary" />
+         <div>
+            <h1 className="text-3xl font-bold tracking-tight">Supplier Inbox</h1>
+            <p className="text-muted-foreground">Manage paid orders waiting for confirmation.</p>
+         </div>
+      </div>
 
-      {error && <div style={{ color: "red", marginBottom: 12 }}>{error}</div>}
+      {error && (
+         <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-6 text-destructive text-center">
+            {error}
+         </div>
+      )}
 
       {loading ? (
-        <div>Loading…</div>
+        <div className="flex justify-center py-20">
+          <Spinner size="lg" />
+        </div>
       ) : orders.length === 0 ? (
-        <div>No paid pending orders.</div>
+         <EmptyState
+            icon={PackageCheck}
+            title="All caught up!"
+            description="No new paid orders to confirm at the moment."
+         />
       ) : (
-        <div style={{ display: "grid", gap: 12 }}>
+        <div className="grid gap-4">
           {orders.map((o) => (
-            <div
-              key={o._id}
-              style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12 }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 800 }}>Order</div>
-                  <div
-                    style={{
-                      fontFamily: "monospace",
-                      fontSize: 12,
-                      opacity: 0.8,
-                    }}
-                  >
-                    {o._id}
+            <Card key={o._id} className="overflow-hidden">
+               <div className="flex flex-col md:flex-row md:items-center justify-between p-6 gap-4">
+                  <div className="space-y-1">
+                     <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm px-2 py-1 bg-muted rounded">#{o._id.slice(-6)}</span>
+                        <Badge variant="outline" className="border-green-200 text-green-700 bg-green-50">
+                           Paid
+                        </Badge>
+                     </div>
+                     <div className="text-sm text-muted-foreground">
+                        {o.createdAt ? new Date(o.createdAt).toLocaleString() : "Unknown Date"}
+                     </div>
                   </div>
 
-                  <div style={{ marginTop: 8 }}>
-                    Total:{" "}
-                    <strong>{formatMoney(o.totalCents, o.currency)}</strong>
+                  <div className="flex items-center gap-8">
+                     <div className="text-right">
+                        <div className="text-sm text-muted-foreground">Total Value</div>
+                        <div className="text-xl font-bold text-foreground">
+                           {formatMoney(o.totalCents, o.currency)}
+                        </div>
+                     </div>
+                     
+                     <Button 
+                        onClick={() => confirm(o._id)}
+                        disabled={busyOrderId === o._id}
+                        size="lg"
+                     >
+                        {busyOrderId === o._id ? (
+                           <Spinner className="h-4 w-4 bg-primary-foreground" />
+                        ) : (
+                           <>
+                              <Check className="mr-2 h-4 w-4" />
+                              Confirm Order
+                           </>
+                        )}
+                     </Button>
                   </div>
-
-                  <div style={{ marginTop: 6, fontSize: 13, opacity: 0.85 }}>
-                    Status: {o.status} | Payment: {o.paymentStatus}
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", alignContent: "start" }}>
-                  <button
-                    onClick={() => confirm(o._id)}
-                    disabled={busyOrderId === o._id}
-                    style={{ padding: 10, fontWeight: 700 }}
-                  >
-                    {busyOrderId === o._id ? "Confirming…" : "Confirm"}
-                  </button>
-                </div>
-              </div>
-            </div>
+               </div>
+            </Card>
           ))}
         </div>
       )}
