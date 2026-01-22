@@ -10,7 +10,7 @@ import { SupplierInboxPage } from "./pages/SupplierInboxPage";
 import { ThreadPage } from "./pages/ThreadPage";
 import { OrdersPage } from "./pages/OrdersPage";
 import { LoginPage } from "./pages/LoginPage";
-
+import { OrderDetailPage } from "./pages/OrderDetailPage";
 import { MessagesPage } from "./pages/MessagesPage";
 
 export const router = createBrowserRouter([
@@ -25,12 +25,23 @@ export const router = createBrowserRouter([
       { path: "/products/:id", element: <ProductDetailPage /> },
 
       // Buyer orders
+      // Buyer orders
       {
         path: "/orders",
         element: (
           <RequireAuth>
             <RequireRole roles={["buyer"]}>
               <OrdersPage />
+            </RequireRole>
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "/orders/:id",
+        element: (
+          <RequireAuth>
+            <RequireRole roles={["buyer"]}>
+              <OrderDetailPage />
             </RequireRole>
           </RequireAuth>
         ),

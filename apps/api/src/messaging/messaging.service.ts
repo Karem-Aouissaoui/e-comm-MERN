@@ -104,6 +104,50 @@ export class MessagingService {
   }
 
   /**
+   * Get inbox for a user (buyer OR supplier).
+   * Returns transformed threads with threadId, plus helper fields:
+   * - otherPartyName: name of the person you are talking to.
+   * - orderLabel: e.g. "Order #123456"
+   */
+  async getInbox(userId: string) {
+    const userObjectId = new Types.ObjectId(userId);
+    
+    // Fetch threads involving this user
+    const threads = await this.threadModel.find({
+      $or: [{ buyerId: userObjectId }, { supplierId: userObjectId }],
+    })
+    .populate('buyerId', 'name email')
+    .populate('supplierId', 'name email')
+    .populate('orderId', 'totalCents currency status') // populate order details
+    .sort({ lastMessageAt: -1, updatedAt: -1, createdAt: -1 })
+    .lean();
+
+    return threads.map((t: any) => {
+      const isBuyer = t.buyerId._id.toString() === userId;
+      // If I am buyer, other party is supplier. If I am supplier, other party is buyer.
+      const otherParty = isBuyer ? t.supplierId : t.buyerId;
+      
+      return {
+        ...t,
+        threadId: t._id.toString(),
+        _id: undefined,
+        
+        // Flattened helper fields for frontend convenience
+        otherPartyName: otherParty?.name || 'Unknown User',
+        orderLabel: t.orderId ? `Order #${t.orderId._id}` : undefined,
+        orderStatus: t.orderId?.status,
+        orderTotal: t.orderId ? { cents: t.orderId.totalCents, currency: t.orderId.currency } : undefined,
+
+        // Restore IDs as strings to match expected basic type (optional but good for strict clients)
+        buyerId: t.buyerId._id.toString(),
+        supplierId: t.supplierId._id.toString(),
+        orderId: t.orderId?._id.toString() || undefined,
+        productId: t.productId?.toString() || undefined,
+      };
+    });
+  }
+
+  /**
    * Get thread by id if the user is a participant (or admin).
    */
   async getThread(params: {

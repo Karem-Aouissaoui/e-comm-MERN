@@ -38,6 +38,16 @@ export class MessagingController {
   }
 
   /**
+   * GET /messaging/inbox
+   * Unified inbox for buyer OR supplier.
+   */
+  @Get('inbox')
+  getInbox(@Req() req: Request) {
+    const user = (req as any).user as { userId: string; roles: string[] };
+    return this.messaging.getInbox(user.userId);
+  }
+
+  /**
    * GET /messaging/threads
    * Inbox list for current user.
    */
