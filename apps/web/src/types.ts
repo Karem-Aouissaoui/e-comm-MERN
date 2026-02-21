@@ -8,6 +8,8 @@ export type Product = {
   category?: string;
   imageUrls?: string[];
   minOrderQty?: number;
+  status?: 'published' | 'draft' | 'archived';
+  supplierId?: string;
 };
 
 export type OrderItem = {

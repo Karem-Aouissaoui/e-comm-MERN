@@ -1,0 +1,40 @@
+<svg width="800" height="400" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="skyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a2a6c;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#b21f1f;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fdbb2d;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Sky Background -->
+  <rect width="800" height="400" fill="url(#skyGradient)" />
+  
+  <!-- Stars -->
+  <circle cx="100" cy="50" r="1.5" fill="white" opacity="0.8"/>
+  <circle cx="250" cy="80" r="1" fill="white" opacity="0.6"/>
+  <circle cx="500" cy="40" r="1.5" fill="white" opacity="0.8"/>
+  <circle cx="650" cy="90" r="1" fill="white" opacity="0.6"/>
+  <circle cx="750" cy="30" r="2" fill="white" opacity="0.9"/>
+  
+  <!-- Moon -->
+  <path d="M700 80 A 30 30 0 1 0 700 140 A 25 25 0 1 1 700 80" fill="#ffffff" opacity="0.9"/>
+
+  <!-- Mosque Silhouette -->
+  <path d="M0,400 L0,350 L50,350 L50,300 C50,280 70,280 70,300 L70,350 L120,350 
+           L120,250 C120,220 160,220 160,250 L160,350 L200,350
+           L200,200 C200,160 280,160 280,200 L280,350 L320,350
+           L320,280 C320,260 360,260 360,280 L360,350 L400,350
+           L400,150 C400,100 500,100 500,150 L500,350 L550,350
+           L550,220 C550,190 600,190 600,220 L600,350 L650,350
+           L650,280 C650,260 690,260 690,280 L690,350 L750,350 L750,400 Z" 
+        fill="#0f172a"/>
+        
+  <!-- Minarets -->
+  <rect x="30" y="250" width="10" height="100" fill="#0f172a"/>
+  <polygon points="30,250 40,250 35,230" fill="#0f172a"/>
+
+  <rect x="760" y="220" width="10" height="130" fill="#0f172a"/>
+  <polygon points="760,220 770,220 765,200" fill="#0f172a"/>
+
+</svg>

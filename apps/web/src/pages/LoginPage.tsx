@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -12,6 +14,7 @@ import {
 } from "../components/ui/card";
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("buyer1@test.com");
   const [password, setPassword] = useState("StrongPass123!");
   const [loading, setLoading] = useState(false);
@@ -42,10 +45,10 @@ export function LoginPage() {
       <Card className="w-full max-w-md shadow-lg border-primary-100">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            Welcome back
+            {t('auth.login.title')}
           </CardTitle>
           <CardDescription className="text-center">
-            Enter your credentials to access your account
+            {t('auth.login.subtitle')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -55,7 +58,7 @@ export function LoginPage() {
                 htmlFor="email"
                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
-                Email
+                {t('auth.login.email_label')}
               </label>
               <Input
                 id="email"
@@ -72,7 +75,7 @@ export function LoginPage() {
                 htmlFor="password"
                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
-                Password
+                {t('auth.login.password_label')}
               </label>
               <Input
                 id="password"
@@ -90,14 +93,22 @@ export function LoginPage() {
               </div>
             )}
 
+
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign in"}
+              {loading ? t('auth.login.submitting') : t('auth.login.submit')}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex flex-col gap-2 border-t bg-muted/50 px-6 py-4">
+          <p className="text-sm text-center text-muted-foreground mb-4">
+            {t('auth.login.no_account')}{" "}
+            <Link to="/register" className="text-primary hover:underline font-medium">
+              {t('auth.login.create_one')}
+            </Link>
+          </p>
+
           <p className="text-xs text-muted-foreground text-center mb-2">
-            Demo functionality:
+            {t('auth.login.demo')}
           </p>
           <div className="grid grid-cols-2 gap-2 w-full">
             <Button
@@ -108,7 +119,7 @@ export function LoginPage() {
                 setPassword("StrongPass123!");
               }}
             >
-              Buyer Demo
+              {t('auth.login.buyer_demo')}
             </Button>
             <Button
               variant="outline"
@@ -118,7 +129,7 @@ export function LoginPage() {
                 setPassword("StrongPass123!");
               }}
             >
-              Supplier Demo
+              {t('auth.login.supplier_demo')}
             </Button>
           </div>
         </CardFooter>

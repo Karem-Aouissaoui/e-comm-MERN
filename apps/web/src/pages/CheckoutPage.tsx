@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
@@ -17,6 +18,7 @@ import { AlertCircle, CheckCircle2, Lock } from "lucide-react";
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 export function CheckoutPage() {
+  const { t } = useTranslation();
   const { orderId } = useParams<{ orderId: string }>();
   const [clientSecret, setClientSecret] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -59,10 +61,10 @@ export function CheckoutPage() {
         <div className="flex h-screen items-center justify-center">
            <div className="max-w-md text-center space-y-4">
               <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
-              <h2 className="text-xl font-bold">Checkout Failed</h2>
+              <h2 className="text-xl font-bold">{t('checkout.failed')}</h2>
               <p className="text-muted-foreground">{error}</p>
               <Link to="/orders">
-                 <Button variant="outline">Back to Orders</Button>
+                 <Button variant="outline">{t('checkout.back_to_orders')}</Button>
               </Link>
            </div>
         </div>
@@ -70,7 +72,7 @@ export function CheckoutPage() {
   }
   
   if (!clientSecret) {
-     return <div className="p-8 text-center">Missing client secret.</div>;
+     return <div className="p-8 text-center">{t('checkout.missing_secret')}</div>;
   }
 
   return (
@@ -80,8 +82,8 @@ export function CheckoutPage() {
            <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit">
               <Lock className="h-6 w-6 text-primary" />
            </div>
-          <CardTitle className="text-2xl">Secure Checkout</CardTitle>
-          <CardDescription>Order #{orderId?.slice(-6)}</CardDescription>
+          <CardTitle className="text-2xl">{t('checkout.title')}</CardTitle>
+          <CardDescription>{t('checkout.order_id', { id: orderId?.slice(-6) })}</CardDescription>
         </CardHeader>
         <CardContent>
            <Elements stripe={stripePromise} options={options}>
@@ -94,6 +96,7 @@ export function CheckoutPage() {
 }
 
 function CheckoutForm({ orderId }: { orderId: string }) {
+  const { t } = useTranslation();
   const stripe = useStripe();
   const elements = useElements();
 
@@ -141,17 +144,16 @@ function CheckoutForm({ orderId }: { orderId: string }) {
         return;
       }
 
-      setMsg("Payment submitted. Waiting for confirmation…");
-
+      setMsg(t('checkout.processing'));
       const final = await pollUntilPaid();
       if (final === "paid") {
          setSuccess(true);
-         setMsg("Payment confirmed! Redirecting...");
+         setMsg(t('checkout.success_title'));
          // Optional: Redirect after success
          setTimeout(() => window.location.href = "/orders", 2000);
       }
-      else if (final === "failed") setMsg("Payment failed. Please try again.");
-      else setMsg("Payment pending. Please check your orders page.");
+      else if (final === "failed") setMsg(t('checkout.failed'));
+      else setMsg(t('checkout.pending'));
     } catch (err: any) {
       setMsg(err?.message ?? "Unexpected error during payment.");
     } finally {
@@ -163,8 +165,8 @@ function CheckoutForm({ orderId }: { orderId: string }) {
      return (
         <div className="text-center space-y-4 py-6">
            <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto animate-bounce" />
-           <h3 className="text-xl font-bold text-green-700">Payment Successful!</h3>
-           <p className="text-muted-foreground">Thank you for your purchase.</p>
+           <h3 className="text-xl font-bold text-green-700">{t('checkout.success_title')}</h3>
+           <p className="text-muted-foreground">{t('checkout.success_sub')}</p>
         </div>
      )
   }
@@ -184,12 +186,12 @@ function CheckoutForm({ orderId }: { orderId: string }) {
          size="lg" 
          disabled={busy || !stripe || !elements}
       >
-        {busy ? <><Spinner className="mr-2 h-4 w-4 bg-white" /> Processing...</> : "Pay Now"}
+        {busy ? <><Spinner className="mr-2 h-4 w-4 bg-white" /> {t('checkout.processing')}</> : t('checkout.pay_now')}
       </Button>
       
       <div className="flex justify-center">
          <Link to="/orders" className="text-sm text-muted-foreground hover:underline">
-            Cancel and return to orders
+            {t('checkout.cancel_return')}
          </Link>
       </div>
     </form>
