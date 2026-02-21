@@ -55,20 +55,10 @@ export class ProductsController {
   }
 
   /**
-   * GET /products/:id
-   * Public product detail.
-   */
-  @Get(':id')
-  find(@Param('id') id: string) {
-    return this.products.findPublicById(id);
-  }
-
-  /**
    * GET /products/mine
    * Supplier-only: list own products.
    *
-   * NOTE: Put this BEFORE ":id" in real routing to avoid route conflicts.
-   * NestJS usually handles it, but it's best practice to keep static routes above params.
+   * IMPORTANT: Must be declared BEFORE :id to avoid NestJS matching 'mine' as an ObjectId.
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('supplier')
@@ -76,6 +66,15 @@ export class ProductsController {
   listMine(@Req() req: Request) {
     const userId = (req as any).user.userId as string;
     return this.products.listMine(userId);
+  }
+
+  /**
+   * GET /products/:id
+   * Public product detail.
+   */
+  @Get(':id')
+  find(@Param('id') id: string) {
+    return this.products.findPublicById(id);
   }
 
   /**

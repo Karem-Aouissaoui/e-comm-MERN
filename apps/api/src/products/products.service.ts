@@ -93,14 +93,22 @@ export class ProductsService {
     const filter: QueryFilter<ProductDocument> = { status: 'published' };
 
     // Category filter (exact match for MVP)
-    if (dto.category) filter.category = dto.category;
+    // If category is "All", we ignore it (frontend might send it, or we handle it here)
+    if (dto.category && dto.category !== 'All') {
+      filter.category = dto.category;
+    }
 
-    // Search (text index)
-    if (dto.search) filter.$text = { $search: dto.search };
+    // Search (Regex for partial match is often better for simple stores than $text)
+    if (dto.search) {
+      filter.$or = [
+        { title: { $regex: dto.search, $options: 'i' } },
+        { description: { $regex: dto.search, $options: 'i' } },
+      ];
+    }
 
     let sort: any = { createdAt: -1 };
-    if (dto.sort === 'price_asc') sort = { price: 1 };
-    if (dto.sort === 'price_desc') sort = { price: -1 };
+    if (dto.sort === 'price_asc') sort = { priceCents: 1 };
+    if (dto.sort === 'price_desc') sort = { priceCents: -1 };
 
     const [items, total] = await Promise.all([
       this.productModel

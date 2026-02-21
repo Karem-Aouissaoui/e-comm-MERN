@@ -145,6 +145,38 @@ export class UsersService {
       updatedAt: user.updatedAt.toISOString(),
     };
   }
+
+  /** Re-enable a previously deactivated user. */
+  async activate(id: string): Promise<UserResponse> {
+    const user = await this.userModel.findByIdAndUpdate(
+      id,
+      { isActive: true },
+      { new: true },
+    );
+    if (!user) throw new NotFoundException('User not found');
+    return this.toResponse(user);
+  }
+
+  /** Replace a user\'s roles array entirely. */
+  async setRoles(id: string, roles: ('buyer' | 'supplier' | 'admin')[]): Promise<UserResponse> {
+    const user = await this.userModel.findByIdAndUpdate(
+      id,
+      { roles },
+      { new: true, runValidators: true },
+    );
+    if (!user) throw new NotFoundException('User not found');
+    return this.toResponse(user);
+  }
+
+  /** Total number of users. */
+  async count(): Promise<number> {
+    return this.userModel.countDocuments();
+  }
+
+  /** Count users that have a specific role in their roles array. */
+  async countByRole(role: string): Promise<number> {
+    return this.userModel.countDocuments({ roles: role });
+  }
   /**
    * Create a user when the password is already hashed.
    * This is used by AuthService during registration.
